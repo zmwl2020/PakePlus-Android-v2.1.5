@@ -1,0 +1,1188 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="x5-fullscreen" content="true">
+    <meta name="x5-orientation" content="portrait">
+    <meta name="x5-video-player-type" content="h5-page">
+    <title>3D女友模拟器</title>
+    <style>
+        :root {
+            --control-top: clamp(20px, 5vh, 60px);
+            --control-gap: clamp(8px, 2vw, 12px);
+            --button-height: clamp(32px, 8vw, 44px);
+            --button-radius: clamp(16px, 4vw, 22px);
+            --button-font: clamp(12px, 3vw, 14px);
+            --side-margin: clamp(12px, 3vw, 20px);
+            --modal-width: clamp(240px, 80vw, 320px);
+            --primary-color: #fd79a8;
+            --secondary-color: #74b9ff;
+            --accent-color: #00cec9;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            touch-action: manipulation;
+        }
+
+        body {
+            overflow: hidden;
+            touch-action: none;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            color: #fff;
+            height: 100vh;
+            position: relative;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* 加载动画样式 */
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #121212, #1e293b);
+            z-index: 99999;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 0.5s ease-out;
+            overflow: hidden;
+        }
+
+        .loading-particles {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        .loading-logo {
+            position: relative;
+            z-index: 2;
+            text-align: center;
+            margin-bottom: 40px;
+            animation: pulse 2s infinite ease-in-out;
+        }
+
+        .loading-logo h1 {
+            font-size: clamp(2.5rem, 8vw, 4rem);
+            font-weight: 900;
+            margin: 0;
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-shadow: 0 0 10px rgba(253, 121, 168, 0.5), 0 0 20px rgba(116, 185, 255, 0.3);
+        }
+
+        .loading-logo span {
+            display: block;
+            font-size: clamp(1rem, 3vw, 1.5rem);
+            margin-top: 10px;
+            color: var(--accent-color);
+            font-weight: 400;
+            text-shadow: 0 0 5px rgba(0, 206, 201, 0.5);
+        }
+
+        .loading-progress {
+            position: relative;
+            z-index: 2;
+            width: 80%;
+            max-width: 400px;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .progress-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+            border-radius: 4px;
+            transition: width 0.3s ease-out;
+            box-shadow: 0 0 15px rgba(253, 121, 168, 0.5);
+            animation: progress 3s forwards ease-out;
+        }
+
+        .loading-text {
+            position: relative;
+            z-index: 2;
+            font-size: clamp(1rem, 3vw, 1.2rem);
+            color: #fff;
+            text-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+            animation: fadeIn 1s forwards;
+            opacity: 0;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.05);
+            }
+        }
+
+        @keyframes progress {
+            0% {
+                width: 0%;
+            }
+            100% {
+                width: 100%;
+            }
+        }
+
+        @keyframes fadeIn {
+            0% {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes particleMove {
+            0% {
+                transform: translate(0, 0) rotate(0deg);
+            }
+            100% {
+                transform: translate(var(--x), var(--y)) rotate(var(--rotate));
+            }
+        }
+
+        .video-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            z-index: -1;
+            background: radial-gradient(circle at center, #0f3460, #1a1a2e);
+        }
+
+        video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0.8;
+            -webkit-transform: translateZ(0);
+            transform: translateZ(0);
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+            -webkit-perspective: 1000;
+            perspective: 1000;
+        }
+
+        .top-controls {
+            position: fixed;
+            top: var(--control-top);
+            left: 0;
+            width: 100%;
+            padding: 0 var(--side-margin);
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            z-index: 9997;
+        }
+
+        .action-button {
+            height: var(--button-height);
+            border-radius: var(--button-radius);
+            padding: 0 16px;
+            font-size: var(--button-font);
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            color: white;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 80px;
+            font-weight: 600;
+            border: none;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        #backButton {
+            background: linear-gradient(135deg, #4a69bd, #1e3799);
+            border: 1px solid rgba(173, 216, 230, 0.5);
+        }
+
+        #backButton:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4);
+        }
+
+        #customLinkBtn {
+            background: linear-gradient(135deg, #00b894, #00a383);
+            margin-bottom: var(--control-gap);
+        }
+
+        .right-controls {
+            display: flex;
+            flex-direction: column;
+            gap: var(--control-gap);
+        }
+
+        .additional-button {
+            background: linear-gradient(135deg, #e84393, #d63031);
+            height: var(--button-height);
+            border-radius: var(--button-radius);
+            padding: 0 14px;
+            font-size: var(--button-font);
+            color: white;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .additional-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        #otakuModeButton {
+            background: linear-gradient(135deg, #fd79a8, #e84393);
+        }
+
+        .preview-notice {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(45deg, #0984e3, #6c5ce7);
+            backdrop-filter: blur(6px);
+            color: white;
+            padding: 10px 25px;
+            border-radius: 30px;
+            font-size: 12px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.35);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            z-index: 9997;
+            white-space: nowrap;
+            animation: float 3s ease-in-out infinite;
+            font-weight: 600;
+        }
+
+        .highlight {
+            color: #ffd700;
+            font-weight: 500;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+            margin: 0 5px;
+        }
+
+        .sparkles {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.8) 20%, transparent 70%);
+            opacity: 0.3;
+            pointer-events: none;
+            animation: sparkle 2s linear infinite;
+        }
+
+        @keyframes float {
+            0%, 100% {
+                transform: translateX(-50%) translateY(0);
+            }
+            50% {
+                transform: translateX(-50%) translateY(-8px);
+            }
+        }
+
+        @keyframes sparkle {
+            from {
+                background-position: 0% 50%;
+            }
+            to {
+                background-position: 200% 50%;
+            }
+        }
+
+        .activation-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: var(--modal-width);
+            background: rgba(15, 23, 42, 0.25);
+            border-radius: 10px;
+            padding: 8px;
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            z-index: 9998;
+            color: white;
+        }
+
+        .modal-header {
+            font-size: 22px;
+            text-align: center;
+            padding-bottom: 20px;
+            margin-bottom: 20px;
+            font-weight: 700;
+            color: #f8f9fa;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .notice-list {
+            margin-bottom: 25px;
+            padding-left: 20px;
+        }
+
+        .notice-list li {
+            margin-bottom: 12px;
+            line-height: 1.5;
+            font-size: 15px;
+            color: #e9ecef;
+            position: relative;
+        }
+
+        .notice-list li:before {
+            content: "•";
+            color: #74b9ff;
+            font-weight: bold;
+            display: inline-block;
+            width: 1em;
+            margin-left: -1em;
+        }
+
+        .activation-buttons {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .pay-btn,
+        .kefu-get-btn,
+        .purchase-btn,
+        .free-get-btn {
+            flex: 1;
+            padding: 10px 15px;
+            background: linear-gradient(45deg, #ff6b6b, #ff3838);
+            color: white;
+            text-align: center;
+            border-radius: 12px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 16px;
+            box-shadow: 0 6px 15px rgba(255, 107, 107, 0.3);
+            border: none;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        .purchase-btn {
+            background: linear-gradient(45deg, #6a11cb, #2575fc);
+            box-shadow: 0 6px 15px rgba(106, 17, 203, 0.3);
+        }
+        .pay-btn {
+            background: linear-gradient(45deg, #6a11cb, #2575fc);
+            box-shadow: 0 6px 15px rgba(106, 17, 203, 0.3);
+        }
+        .purchase-btn:hover,
+        .free-get-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+        
+        .kefu-get-btn:hover,
+        .pay-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .activation-form {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .code-input {
+            flex: 1;
+            padding: 14px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .code-input:focus {
+            border-color: #74b9ff;
+            box-shadow: 0 0 0 3px rgba(116, 185, 255, 0.2);
+        }
+
+        .activate-btn {
+            padding: 7px 10px;
+            background: linear-gradient(45deg, #00b894, #00cec9);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            box-shadow: 0 6px 15px rgba(0, 184, 148, 0.3);
+        }
+
+        .activate-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .custom-alert {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(15, 23, 42, 0.95);
+            color: #fff;
+            padding: 20px 35px;
+            border-radius: 18px;
+            font-size: 18px;
+            backdrop-filter: blur(15px);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+            z-index: 9999;
+            display: none;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+            max-width: 80%;
+            animation: alertFade 3s ease forwards;
+        }
+
+        @keyframes alertFade {
+            0% {
+                opacity: 0;
+                transform: translate(-50%, -40%);
+            }
+            10% {
+                opacity: 1;
+                transform: translate(-50%, -50%);
+            }
+            90% {
+                opacity: 1;
+                transform: translate(-50%, -50%);
+            }
+            100% {
+                opacity: 0;
+                transform: translate(-50%, -60%);
+            }
+        }
+
+        .qr-code-modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(15, 23, 42, 0.95);
+            padding: 25px;
+            border-radius: 20px;
+            z-index: 10000;
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            text-align: center;
+        }
+
+        .qr-code-modal h3 {
+            margin-bottom: 15px;
+            color: #f8f9fa;
+            font-size: 20px;
+        }
+
+        .qr-code-modal img {
+            width: 220px;
+            height: 220px;
+            border-radius: 10px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .close-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: rotate(90deg);
+        }
+
+        .shield {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, rgba(10, 25, 47, 0.1), rgba(5, 15, 30, 0.15));
+            z-index: 9995;
+            display: block;
+            backdrop-filter: blur(3px);
+        }
+
+        .video-error {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            background: rgba(231, 76, 60, 0.9);
+            padding: 20px 30px;
+            border-radius: 15px;
+            z-index: 9999;
+            display: none;
+            text-align: center;
+            font-size: 16px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
+        
+        .logo {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            font-size: 24px;
+            font-weight: 800;
+            color: #fff;
+            z-index: 10;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+        }
+        
+        .logo span {
+            color: #fd79a8;
+        }
+        
+        .video-source-info {
+            position: fixed;
+            bottom: 70px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px 15px;
+            border-radius: 10px;
+            font-size: 12px;
+            max-width: 300px;
+            z-index: 9996;
+            border-left: 3px solid #00cec9;
+        }
+        
+        /* 视频播放状态提示 */
+        .play-hint {
+            position: fixed;
+            bottom: 120px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.6);
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            z-index: 9996;
+            animation: fadeHint 4s forwards;
+            opacity: 0;
+            pointer-events: none;
+            text-align: center;
+            max-width: 80%;
+        }
+        
+        @keyframes fadeHint {
+            0% {
+                opacity: 0;
+                transform: translateX(-50%) translateY(10px);
+            }
+            20% {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+            80% {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+            100% {
+                opacity: 0;
+                transform: translateX(-50%) translateY(-10px);
+            }
+        }
+        
+        /* X5内核视频播放优化 */
+        .x5-video-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+        
+        .x5-video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        /* 安卓状态栏适配 */
+        .android-status-bar-padding {
+            height: env(safe-area-inset-top);
+            background: transparent;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 99999;
+        }
+        
+        /* 已完全移除角色显示样式和选择角色按钮样式 */
+    </style>
+</head>
+<body>
+    <!-- 安卓状态栏适配 -->
+    <div class="android-status-bar-padding"></div>
+
+    <!-- 加载动画界面 -->
+    <div class="loading-screen" id="loadingScreen">
+        <div class="loading-particles" id="loadingParticles"></div>
+        <div class="loading-logo">
+            <h1 id="loadingTitle">3D女友模拟器</h1>
+            <span id="loadingSubtitle">正在加载游戏资源...</span>
+        </div>
+        <div class="loading-progress">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+        <div class="loading-text" id="loadingText">初始化游戏引擎</div>
+    </div>
+    
+    <!-- 视频播放提示（短暂显示） -->
+    <div class="play-hint" id="playHint">视频加载完成，点击任意位置开始</div>
+
+    <div class="shield" id="shield"></div>
+    
+    <!-- X5内核视频容器 -->
+    <div class="x5-video-container">
+        <video id="bgVideo" autoplay playsinline loop muted x5-playsinline x5-video-player-type="h5" webkit-playsinline>
+            您的浏览器不支持视频标签。
+        </video>
+        <div class="video-error" id="videoError">视频加载失败，请检查网络连接</div>
+    </div>
+
+    <div class="top-controls">
+        <button id="backButton" class="action-button">返回</button>
+        <div class="right-controls">
+            <!-- 完全移除了选择角色按钮 -->
+            <button id="customLinkBtn" class="action-button">开启自由模式</button>
+            <button id="otakuModeButton" class="additional-button">女主</button>
+            <button id="standButton" class="additional-button">真实触摸</button>
+        </div>
+    </div>
+
+    <div class="custom-alert" id="customAlert"></div>
+
+    <div class="activation-modal">
+        <div class="modal-content">
+            <div class="modal-header">温馨提示</div>
+            <div class="modal-body">
+                <ul class="notice-list">
+                    <li>游戏制作成本过高需要买激活码解锁</li>
+                    <li>一次购买所有都可永久解锁</li>
+                    <li>有任何问题可以咨询人工客服</li>
+                    <li>人工客服在线时间中午1到晚上11</li>
+                </ul>
+                
+                <div class="activation-buttons">
+                    <div class="free-get-btn">免费激活</div>
+                    <div class="purchase-btn">购买激活码</div>
+                </div>
+                
+                <div class="activation-buttons">
+                    <div class="kefu-get-btn">人工客服</div>
+                    <div class="pay-btn">购买记录查询</div>
+                </div>
+                
+                <div class="activation-form">
+                    <input type="password" id="activationCode" placeholder="请输入激活码" class="code-input">
+                    <button class="activate-btn">激活</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="preview-notice" id="previewNotice">
+        🎮 游戏预览版 | 激活后可解锁<br><span class="highlight">完整隐藏功能</span>与<span class="highlight">专属福利</span>
+        <div class="sparkles"></div>
+    </div>
+
+    <script>
+        // 全局状态管理
+        let isActivated = false;
+        let isVideoMode = false;
+        let currentCharacter = 'yae'; // 默认角色
+        const ACTIVATION_PASSWORD = "8762030";
+        
+        // 角色视频源定义 - 整合所有角色（包含雅菲）
+        const videoSources = {
+            yae: {
+                name: "八重仙子",
+                displayName: "八重仙子",
+                default: "AA/xianzi/beijing.mp4",
+                otaku: "AA/xianzi/yanwu.mp4",
+                stand: "AA/xianzi/chumo.mp4"
+            },
+            tsunade: {
+                name: "纲手",
+                displayName: "纲手",
+                default: "AA/gangshou/beijing.mp4",
+                otaku: "AA/gangshou/yanwu.mp4",
+                stand: "AA/gangshou/chumo.mp4"
+            },
+            lu_xue_qi: {
+                name: "陆雪琪",
+                displayName: "陆雪琪",
+                default: "AA/luxueqi/beijing.mp4",
+                otaku: "AA/luxueqi/yanwu.mp4",
+                stand: "AA/luxueqi/chumo.mp4"
+            },
+            shen_he: {
+                name: "申鹤",
+                displayName: "申鹤",
+                default: "AA/shenhe/beijing.mp4",
+                otaku: "AA/shenhe/yanwu.mp4",
+                stand: "AA/shenhe/chumo.mp4"
+            },
+            sheng_cai_er: {
+                name: "圣采儿",
+                displayName: "圣采儿",
+                default: "AA/shengcaier/beijing.mp4",
+                otaku: "AA/shengcaier/yanwu.mp4",
+                stand: "AA/shengcaier/chumo.mp4"
+            },
+            xiao_yi_xian: {
+                name: "小医仙",
+                displayName: "小医仙",
+                default: "AA/xiaoyixian/beijing.mp4",
+                otaku: "AA/xiaoyixian/yanwu.mp4",
+                stand: "AA/xiaoyixian/chumo.mp4"
+            },
+            yun_yun: {
+                name: "云韵",
+                displayName: "云韵",
+                default: "AA/yunyun/beijing.mp4",
+                otaku: "AA/yunyun/yanwu.mp4",
+                stand: "AA/yunyun/chumo.mp4"
+            },
+            ya_fei: {
+                name: "雅菲",
+                displayName: "雅菲",
+                default: "AA/yafei/beijing.mp4",
+                otaku: "AA/yafei/yanwu.mp4",
+                stand: "AA/yafei/chumo.mp4"
+            }
+        };
+        
+        // 自定义链接
+        const CUSTOM_LINK = "https://ocnjmiycxtky.feishu.cn/wiki/PMCiwLNmHilICwk1pjBcnGUenfb";
+
+        // 检查本地存储中的激活状态
+        function checkActivationStatus() {
+            const activated = localStorage.getItem('isActivated');
+            return activated === 'true';
+        }
+
+        // 保存激活状态到本地存储
+        function saveActivationStatus(status) {
+            localStorage.setItem('isActivated', status);
+        }
+
+        // 从URL获取角色参数
+        function getCharacterFromURL() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const character = urlParams.get('character');
+            
+            // 验证角色参数是否有效
+            if (character && videoSources[character]) {
+                return character;
+            }
+            
+            // 如果没有有效参数，尝试从localStorage获取
+            const storedCharacter = localStorage.getItem('selectedCharacter');
+            if (storedCharacter && videoSources[storedCharacter]) {
+                return storedCharacter;
+            }
+            
+            // 默认八重仙子
+            return 'yae';
+        }
+
+        // 保存角色选择到本地存储
+        function saveCharacterSelection(character) {
+            localStorage.setItem('selectedCharacter', character);
+        }
+
+        // 界面控制函数
+        function toggleInterface(show) {
+            const elements = ['.right-controls', '#previewNotice'];
+            elements.forEach(selector => {
+                const el = document.querySelector(selector);
+                if (el) el.style.display = show ? 'flex' : 'none';
+            });
+            
+            const backButton = document.getElementById('backButton');
+            if (backButton) {
+                backButton.style.display = 'flex';
+            }
+        }
+
+        // 视频加载功能 - 针对X5内核优化
+        function loadVideo(source) {
+            const video = document.getElementById('bgVideo');
+            const videoError = document.getElementById('videoError');
+
+            // 检查X5内核支持
+            const isX5Browser = /MQQBrowser|QQ/.test(navigator.userAgent) && /TBS/.test(navigator.userAgent);
+            
+            // 设置视频源
+            video.src = source;
+            video.load();
+
+            video.onerror = () => {
+                videoError.style.display = 'block';
+                setTimeout(() => videoError.style.display = 'none', 3000);
+            };
+
+            // 初始设置为静音播放
+            video.muted = true;
+            
+            // X5内核特殊处理
+            if (isX5Browser) {
+                video.setAttribute('x5-video-player-type', 'h5');
+                video.setAttribute('x5-video-player-fullscreen', 'true');
+                video.setAttribute('x5-video-orientation', 'portraint');
+            }
+
+            // 尝试播放
+            const playPromise = video.play();
+            
+            if (playPromise !== undefined) {
+                playPromise.catch(error => {
+                    console.log("静音自动播放失败:", error);
+                    // 显示提示让用户点击
+                    document.getElementById('playHint').style.display = 'block';
+                    setTimeout(() => {
+                        document.getElementById('playHint').style.display = 'none';
+                    }, 4000);
+                });
+            }
+        }
+
+        // 返回按钮处理
+        function handleBackAction() {
+            if (isVideoMode) {
+                toggleInterface(true);
+                loadVideo(videoSources[currentCharacter].default);
+                isVideoMode = false;
+            } else {
+                // 如果有历史记录则返回，否则留在当前页
+                if (document.referrer && document.referrer !== window.location.href) {
+                    window.history.back();
+                } else {
+                    // 如果没有历史记录，跳转到主页
+                    window.location.href = 'nav.html';
+                }
+            }
+        }
+
+        // 生成加载动画粒子
+        function createLoadingParticles() {
+            const particlesContainer = document.getElementById('loadingParticles');
+            const particleCount = 50;
+            
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                const size = Math.random() * 3 + 1;
+                const duration = Math.random() * 8 + 5;
+                const delay = Math.random() * 3;
+                const x = (Math.random() - 0.5) * 100;
+                const y = (Math.random() - 0.5) * 100;
+                const rotate = Math.random() * 360;
+                
+                particle.style.position = 'absolute';
+                particle.style.width = `${size}px`;
+                particle.style.height = `${size}px`;
+                particle.style.background = `rgba(253, 121, 168, ${Math.random() * 0.5 + 0.2})`;
+                particle.style.borderRadius = '50%';
+                particle.style.left = `${Math.random() * 100}%`;
+                particle.style.top = `${Math.random() * 100}%`;
+                particle.style.boxShadow = `0 0 ${size * 2}px rgba(253, 121, 168, ${Math.random() * 0.3 + 0.1})`;
+                particle.style.animation = `particleMove ${duration}s ease-in-out ${delay}s infinite`;
+                particle.style.animationFillMode = 'forwards';
+                particle.style.transform = 'translate(0, 0) rotate(0deg)';
+                particle.style.setProperty('--x', `${x}px`);
+                particle.style.setProperty('--y', `${y}px`);
+                particle.style.setProperty('--rotate', `${rotate}deg`);
+                
+                particlesContainer.appendChild(particle);
+            }
+        }
+
+        // 显示加载动画
+        function showLoadingAnimation() {
+            const loadingScreen = document.getElementById('loadingScreen');
+            const progressBar = document.getElementById('progressBar');
+            const loadingText = document.getElementById('loadingText');
+            
+            loadingScreen.style.display = 'flex';
+            
+            // 模拟加载进度
+            let progress = 0;
+            const progressInterval = setInterval(() => {
+                progress += 5;
+                if (progress >= 100) {
+                    progress = 100;
+                    clearInterval(progressInterval);
+                    
+                    // 加载完成后隐藏加载界面
+                    setTimeout(() => {
+                        loadingScreen.style.opacity = '0';
+                        setTimeout(() => {
+                            loadingScreen.style.display = 'none';
+                            
+                            // 显示播放提示
+                            const playHint = document.getElementById('playHint');
+                            playHint.style.display = 'block';
+                            setTimeout(() => {
+                                playHint.style.display = 'none';
+                            }, 4000);
+                        }, 500);
+                    }, 500);
+                }
+                progressBar.style.width = `${progress}%`;
+                
+                // 动态更新加载文本
+                switch (Math.floor(progress / 25)) {
+                    case 0:
+                        loadingText.textContent = "正在初始化游戏引擎";
+                        break;
+                    case 1:
+                        loadingText.textContent = "加载3D模型资源";
+                        break;
+                    case 2:
+                        loadingText.textContent = "初始化物理引擎";
+                        break;
+                    case 3:
+                        loadingText.textContent = "加载音效资源";
+                        break;
+                    case 4:
+                        loadingText.textContent = "游戏加载完成!";
+                        break;
+                }
+            }, 100);
+        }
+
+        // 初始化事件绑定
+        document.addEventListener('DOMContentLoaded', () => {
+            // 创建加载粒子
+            createLoadingParticles();
+            
+            // 显示加载动画
+            showLoadingAnimation();
+            
+            // 从URL获取角色参数
+            currentCharacter = getCharacterFromURL();
+            saveCharacterSelection(currentCharacter);
+            
+            // 检查是否已激活
+            isActivated = checkActivationStatus();
+            
+            // 根据激活状态设置UI
+            if (isActivated) {
+                document.getElementById('shield').style.display = 'none';
+                document.querySelector('.activation-modal').style.display = 'none';
+                document.getElementById('previewNotice').style.display = 'none';
+            }
+
+            // 返回按钮功能
+            document.getElementById('backButton').addEventListener('click', handleBackAction);
+
+            // 宅男模式按钮功能
+            document.getElementById('otakuModeButton').addEventListener('click', () => {
+                if (!isActivated) {
+                    showCustomAlert('请先激活！');
+                    return;
+                }
+                isVideoMode = true;
+                toggleInterface(false);
+                loadVideo(videoSources[currentCharacter].otaku);
+            });
+
+            // 站着按钮功能
+            document.getElementById('standButton').addEventListener('click', () => {
+                if (!isActivated) {
+                    showCustomAlert('请先激活！');
+                    return;
+                }
+                isVideoMode = true;
+                toggleInterface(false);
+                loadVideo(videoSources[currentCharacter].stand);
+            });
+
+            // 自由模式按钮功能
+            document.getElementById('customLinkBtn').addEventListener('click', () => {
+                if (!isActivated) {
+                    showCustomAlert('请先激活！');
+                    return;
+                }
+                window.location.href = CUSTOM_LINK;
+            });
+
+            // 激活功能
+            document.querySelector('.activate-btn').addEventListener('click', () => {
+                const inputCode = document.getElementById('activationCode').value.trim();
+                if (inputCode === ACTIVATION_PASSWORD) {
+                    isActivated = true;
+                    saveActivationStatus(true);
+
+                    // 隐藏界面元素
+                    document.getElementById('shield').style.display = 'none';
+                    document.querySelector('.activation-modal').style.display = 'none';
+                    document.getElementById('previewNotice').style.display = 'none';
+
+                    showCustomAlert('激活成功！');
+                } else {
+                    showCustomAlert('激活码错误');
+                }
+            });
+
+            // 其他事件监听
+            document.querySelectorAll('.close-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.target.closest('.qr-code-modal').style.display = 'none';
+                });
+            });
+
+            // 修改免费激活码按钮的点击事件
+            document.querySelector('.free-get-btn').addEventListener('click', () => {
+                window.location.href = 'mianfei.html';
+            });
+
+            // 修改购买激活码按钮的点击事件
+            document.querySelector('.purchase-btn').addEventListener('click', () => {
+                window.location.href = 'https://10.xn--5nq81w94qqjnx9xqdi.xn--fiqs8s?from=1167';
+            });
+            
+            // 修改人工客服按钮的点击事件
+            document.querySelector('.kefu-get-btn').addEventListener('click', () => {
+                window.location.href = 'https://flowus.cn/share/8f6b93bb-7e42-4eb2-8d10-c0b5d7bbc4e1?code=Z7K2F2';
+            });
+            
+            // 修改付费查询按钮的点击事件
+            document.querySelector('.pay-btn').addEventListener('click', () => {
+                window.location.href = 'https://10.xn--5nq81w94qqjnx9xqdi.xn--fiqs8s/user/index/query';
+            });
+            
+            document.getElementById('shield').addEventListener('click', () => {
+                showCustomAlert('请激活后再进入哦');
+            });
+
+            // 初始化默认视频
+            loadVideo(videoSources[currentCharacter].default);
+            
+            // 添加全局点击事件处理（解决自动播放问题）
+            document.body.addEventListener('click', function() {
+                const video = document.getElementById('bgVideo');
+                
+                // 第一次点击时取消静音并尝试播放
+                if (video.muted) {
+                    video.muted = false;
+                    video.volume = 0.5;
+                    
+                    video.play().catch(error => {
+                        console.log("播放失败:", error);
+                    });
+                }
+            });
+            
+            // 视频播放状态监听
+            const video = document.getElementById('bgVideo');
+            video.addEventListener('play', () => {
+                console.log("视频开始播放");
+            });
+            
+            // 针对安卓设备的特殊处理
+            if (/Android/i.test(navigator.userAgent)) {
+                // 安卓设备上的优化处理
+                console.log("Android device detected, applying optimizations");
+                
+                // 添加chumo反馈效果
+                const buttons = document.querySelectorAll('button');
+                buttons.forEach(btn => {
+                    btn.addEventListener('touchstart', function() {
+                        this.style.transform = 'scale(0.95)';
+                    });
+                    btn.addEventListener('touchend', function() {
+                        this.style.transform = '';
+                    });
+                });
+            }
+        });
+
+        // 提示信息显示
+        function showCustomAlert(message) {
+            const alertBox = document.getElementById('customAlert');
+            alertBox.textContent = message;
+            alertBox.style.display = 'block';
+            setTimeout(() => alertBox.style.display = 'none', 3000);
+        }
+        
+        // 安卓物理返回键处理
+        document.addEventListener('backbutton', handleBackAction, false);
+    </script>
+</body>
+</html>
