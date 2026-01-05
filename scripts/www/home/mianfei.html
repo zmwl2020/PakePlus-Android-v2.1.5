@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>免费激活提示</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+        
+        .container {
+            max-width: 800px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            text-align: center;
+        }
+        
+        .back-button {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: linear-gradient(135deg, #4a69bd, #1e3799);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+        
+        .back-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+        }
+        
+        .back-button:active {
+            transform: translateY(0);
+        }
+        
+        .icon {
+            font-size: 18px;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+            background: linear-gradient(90deg, #ff6b6b, #ff3838);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-shadow: 0 2px 10px rgba(255, 107, 107, 0.3);
+        }
+        
+        .message {
+            font-size: 1.2rem;
+            line-height: 1.6;
+            margin-bottom: 40px;
+            padding: 0 20px;
+            color: #e9ecef;
+        }
+        
+        .highlight {
+            color: #ffd700;
+            font-weight: bold;
+        }
+        
+        .image-container {
+            margin: 30px 0;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 15px;
+            border: 2px dashed rgba(255, 255, 255, 0.1);
+        }
+        
+        .placeholder-image {
+            width: 100%;
+            max-width: 400px;
+            height: auto;
+            border-radius: 10px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+            display: block;
+            margin: 0 auto;
+        }
+        
+        .image-caption {
+            margin-top: 15px;
+            font-size: 0.9rem;
+            color: #a0aec0;
+            font-style: italic;
+        }
+        
+        .warning-box {
+            background: rgba(231, 76, 60, 0.1);
+            border: 1px solid rgba(231, 76, 60, 0.3);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 30px;
+        }
+        
+        .warning-box h3 {
+            color: #ff6b6b;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .action-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+        
+        .action-btn {
+            padding: 15px 30px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+            text-decoration: none;
+            min-width: 180px;
+        }
+        
+        .purchase-btn {
+            background: linear-gradient(45deg, #6a11cb, #2575fc);
+            color: white;
+            box-shadow: 0 6px 15px rgba(106, 17, 203, 0.3);
+        }
+        
+        .purchase-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .message {
+                font-size: 1rem;
+                padding: 0 10px;
+            }
+            
+            .back-button {
+                padding: 10px 20px;
+                font-size: 14px;
+            }
+            
+            .action-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .action-btn {
+                width: 100%;
+                max-width: 300px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 1.8rem;
+            }
+            
+            .container {
+                padding: 15px;
+            }
+            
+            .back-button {
+                top: 15px;
+                left: 15px;
+            }
+        }
+        
+        /* 动画效果 */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .container {
+            animation: fadeIn 0.8s ease-out;
+        }
+    </style>
+</head>
+<body>
+    <a href="game.html" class="back-button">
+        <span class="icon">←</span>
+        <span>返回游戏</span>
+    </a>
+    
+    <div class="container">
+        <h1>⚠️ 激活提示</h1>
+        
+        <div class="message">
+            <p>非常抱歉，当前<span class="highlight">暂不支持免费获取激活码</span>。</p>
+            <p>由于游戏制作成本高昂，服务器维护费用巨大，我们需要收取一定的费用来保证游戏的持续更新和服务质量。</p>
+        </div>
+        
+        <div class="image-container">
+            <!-- 请将下面src中的"your-image.jpg"替换为您的本地图片路径 -->
+            <img src="a.jpg" alt="激活提示图片" class="placeholder-image" onerror="this.style.display='none';">
+            <p class="image-caption">请点击下方按钮购买激活码</p>
+        </div>
+        
+        <div class="warning-box">
+            <h3>
+                <span class="icon">⚠️</span>
+                <span>重要提示</span>
+            </h3>
+            <p>一次购买即可永久解锁所有角色和功能，包括后续更新的新内容！</p>
+            <p>购买后请妥善保存您的激活码，可在多台设备使用。</p>
+        </div>
+        
+        <div class="action-buttons">
+            <a href="https://10.xn--5nq81w94qqjnx9xqdi.xn--fiqs8s?from=1167" class="action-btn purchase-btn" target="_blank">
+                立即购买激活码
+            </a>
+        </div>
+    </div>
+
+    <script>
+        // 图片加载失败处理
+        document.addEventListener('DOMContentLoaded', function() {
+            const img = document.querySelector('.placeholder-image');
+            if (img) {
+                img.onerror = function() {
+                    // 如果图片加载失败，显示一个替代的文本
+                    const container = document.querySelector('.image-container');
+                    if (container) {
+                        container.innerHTML = `
+                            <div style="text-align: center; padding: 40px;">
+                                <div style="font-size: 3rem; margin-bottom: 20px;">🖼️</div>
+                                <h3 style="color: #74b9ff; margin-bottom: 10px;">图片未加载</h3>
+                                <p>请确保图片文件已正确放置在指定位置</p>
+                                <p style="margin-top: 10px; font-size: 0.9rem; color: #a0aec0;">图片路径: your-image.jpg</p>
+                            </div>
+                        `;
+                    }
+                };
+            }
+            
+            // 返回按钮点击效果
+            const backButton = document.querySelector('.back-button');
+            if (backButton) {
+                backButton.addEventListener('click', function(e) {
+                    // 添加点击反馈
+                    this.style.transform = 'scale(0.95)';
+                    setTimeout(() => {
+                        this.style.transform = '';
+                    }, 200);
+                });
+            }
+            
+            // 安卓物理返回键处理
+            document.addEventListener('backbutton', function(e) {
+                e.preventDefault();
+                window.location.href = 'game.html';
+            }, false);
+        });
+    </script>
+</body>
+</html>
