@@ -1,11 +1,337 @@
 <!DOCTYPE html>
-<html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>PakePlus</title>
-    </head>
-    <body>
-        PakePlus
-    </body>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <!-- 修改视口设置，强制横屏方向 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="screen-orientation" content="landscape"> <!-- 建议横屏 -->
+    <meta name="x5-orientation" content="landscape"> <!-- 针对微信X5内核 -->
+    <title>游戏启动页</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            background: #000;
+            /* 强制横屏显示的备用样式 */
+            transform: rotate(0);
+        }
+
+        /* 加载页面样式 - 适配横屏 */
+        .loading-container {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            background: #1a1a1a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            transition: opacity 0.5s;
+            z-index: 2;
+        }
+
+        .loading-text {
+            color: #fff;
+            font-size: 28px; /* 横屏适当放大字体 */
+            margin-top: 20px;
+            font-family: Arial, sans-serif;
+        }
+
+        .dot-flashing {
+            position: relative;
+            width: 12px;
+            height: 12px;
+            border-radius: 6px;
+            background-color: #4e9af1;
+            color: #4e9af1;
+            animation: dotFlashing 1s infinite linear alternate;
+            animation-delay: 0.5s;
+        }
+
+        .dot-flashing::before,
+        .dot-flashing::after {
+            content: '';
+            display: inline-block;
+            position: absolute;
+            top: 0;
+            width: 12px;
+            height: 12px;
+            border-radius: 6px;
+            background-color: #4e9af1;
+            color: #4e9af1;
+        }
+
+        .dot-flashing::before {
+            left: -20px; /* 横屏调整间距 */
+            animation: dotFlashing 1s infinite alternate;
+            animation-delay: 0s;
+        }
+
+        .dot-flashing::after {
+            left: 20px; /* 横屏调整间距 */
+            animation: dotFlashing 1s infinite alternate;
+            animation-delay: 1s;
+        }
+
+        @keyframes dotFlashing {
+            0% { background-color: #4e9af1; }
+            50%, 100% { background-color: rgba(78, 154, 241, 0.2); }
+        }
+
+        /* 开始游戏页面 - 横屏适配 */
+        .start-container {
+            display: none;
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            z-index: 1;
+        }
+
+        #bg-video {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* 横屏覆盖整个区域 */
+            opacity: 0.8;
+        }
+
+        /* 横屏调整开始按钮位置和尺寸 */
+        .start-button {
+            position: absolute;
+            left: 50%;
+            top: 50%; /* 横屏居中显示 */
+            transform: translateX(-50%) translateY(-50%);
+            padding: 20px 60px; /* 横屏放大按钮 */
+            font-size: 32px; /* 横屏放大字体 */
+            background: linear-gradient(45deg, #4e9af1, #6c5ce7);
+            border: none;
+            border-radius: 40px;
+            color: white;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+            font-family: 'Arial Black', sans-serif;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .start-button:hover {
+            transform: translateX(-50%) translateY(-50%) scale(1.1);
+            box-shadow: 0 0 30px rgba(110, 90, 240, 0.8);
+        }
+
+        /* 协议条款样式 - 横屏适配 */
+        .terms-box {
+            position: absolute;
+            left: 50%;
+            top: 85%; /* 横屏调整到底部 */
+            transform: translateX(-50%);
+            color: #fff;
+            width: 80%;
+            text-align: center;
+            font-family: Arial, sans-serif;
+        }
+
+        .terms-label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 10px 0;
+            font-size: 14px; /* 横屏放大协议文字 */
+        }
+
+        .terms-checkbox {
+            margin-right: 10px;
+            width: 18px;
+            height: 18px;
+        }
+
+        .terms-links {
+            margin-top: 8px;
+        }
+
+        .terms-links a {
+            color: #4e9af1;
+            text-decoration: none;
+            margin: 0 12px;
+            font-size: 16px; /* 横屏放大链接文字 */
+        }
+
+        .terms-links a:hover {
+            text-decoration: underline;
+        }
+
+        /* 弹窗样式 - 横屏适配 */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 3;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto; /* 横屏调整弹窗垂直位置 */
+            padding: 25px;
+            border: 1px solid #888;
+            width: 70%; /* 横屏缩小弹窗宽度占比 */
+            max-width: 600px;
+            border-radius: 8px;
+        }
+
+        .modal-title {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+
+        .modal-body {
+            margin-bottom: 20px;
+            line-height: 1.8;
+            font-size: 16px;
+        }
+
+        .modal-footer {
+            text-align: right;
+        }
+
+        .close-modal {
+            background-color: #4e9af1;
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        /* 针对移动端横屏的特殊适配 */
+        @media screen and (orientation: portrait) {
+            /* 如果用户强制竖屏，提示旋转屏幕 */
+            body::before {
+                content: "请旋转屏幕至横屏模式";
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                color: white;
+                font-size: 24px;
+                z-index: 9999;
+                background: rgba(0,0,0,0.8);
+                padding: 20px;
+                border-radius: 10px;
+            }
+            .loading-container, .start-container, .modal {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 加载页面 -->
+    <div class="loading-container" id="loading">
+        <div class="dot-flashing"></div>
+        <div class="loading-text">资源加载中...</div>
+    </div>
+
+    <!-- 开始游戏页面 -->
+    <div class="start-container" id="startPage">
+        <video id="bg-video" autoplay loop muted playsinline>
+            <source src="home/AA/kaishicaidan.mp4" type="video/mp4">
+        </video>
+        <button class="start-button" onclick="checkTerms()">开始游戏</button>
+        <div class="terms-box">
+            <div class="terms-label">
+                <input type="checkbox" id="termsCheck" class="terms-checkbox" checked>
+                <label for="termsCheck">我已仔细阅读并同意 <a href="#" onclick="openModal(); return false;">3D互动模拟器使用许可及服务协议和隐私政策</a></label>
+            </div>
+        </div>
+    </div>
+
+    <!-- 弹窗 -->
+    <div id="myModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-title">协议与政策V1</div>
+            <div class="modal-body">
+                自由需要配合PC才能实现  付费之后不支持退款，开始游戏视为默认同意以上服务协议！
+            </div>
+            <div class="modal-footer">
+                <button class="close-modal" onclick="closeModal()">我已知晓</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 模拟加载过程
+        window.onload = function() {
+            setTimeout(() => {
+                document.getElementById('loading').style.opacity = '0';
+                document.getElementById('startPage').style.display = 'block';
+                setTimeout(() => {
+                    document.getElementById('loading').style.display = 'none';
+                }, 500);
+            }, 1000);
+        };
+
+        // 协议验证函数
+        function checkTerms() {
+            const isChecked = document.getElementById('termsCheck').checked;
+            
+            if (!isChecked) {
+                alert('请先阅读并同意服务协议和隐私政策');
+                return;
+            }
+            startGame();
+        }
+
+        // 开始游戏跳转
+        function startGame() {
+            window.location.href = 'home/nav.html'; // 替换为实际游戏页面
+        }
+
+        // 按钮状态控制
+        const checkbox = document.getElementById('termsCheck');
+        const startBtn = document.querySelector('.start-button');
+        
+        checkbox.addEventListener('change', () => {
+            startBtn.style.opacity = checkbox.checked ? 1 : 0.6;
+            startBtn.style.cursor = checkbox.checked ? 'pointer' : 'not-allowed';
+        });
+
+        // 打开弹窗
+        function openModal() {
+            document.getElementById('myModal').style.display = 'block';
+        }
+
+        // 关闭弹窗
+        function closeModal() {
+            document.getElementById('myModal').style.display = 'none';
+        }
+
+        // 点击空白处关闭弹窗
+        window.onclick = function(event) {
+            const modal = document.getElementById('myModal');
+            if (event.target == modal) {
+                closeModal();
+            }
+        }
+
+        // 监听屏幕方向变化
+        window.addEventListener('orientationchange', function() {
+            // 刷新页面以适配新的屏幕方向
+            window.location.reload();
+        });
+    </script>
+</body>
 </html>
