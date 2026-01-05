@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="screen-orientation" content="landscape">
+    <meta name="x5-orientation" content="landscape">
+    <title>3D国漫女友 - 横屏滑动版</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#00e6f6',
+                        secondary: '#ad4bff',
+                        accent: '#ff6bff',
+                        dark: '#0a0a0a',
+                        darker: '#050505',
+                        light: '#f0f0f0',
+                    },
+                    fontFamily: {
+                        sans: ['Helvetica Neue', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .text-gradient {
+                background-clip: text;
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+            }
+            .bg-glass {
+                background: rgba(255, 255, 255, 0.05);
+                backdrop-filter: blur(12px);
+            }
+            .card-hover {
+                transition: all 0.3s ease;
+            }
+            .card-hover:hover {
+                transform: translateY(-8px);
+                box-shadow: 0 15px 30px rgba(0, 230, 246, 0.2);
+            }
+        }
+    </style>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', system-ui, sans-serif;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+            color: #fff;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        /* 加载动画样式 */
+        .loader-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #050505;
+            z-index: 99999;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 0.8s ease, visibility 0.8s ease;
+        }
+        
+        .loader-overlay.hidden {
+            opacity: 0;
+            visibility: hidden;
+        }
+        
+        .loader {
+            width: 60px;
+            height: 60px;
+            border: 4px solid rgba(0, 230, 246, 0.2);
+            border-radius: 50%;
+            border-top-color: #00e6f6;
+            border-right-color: #ad4bff;
+            animation: spin 1.5s linear infinite;
+            margin-bottom: 20px;
+        }
+        
+        .loader-text {
+            font-size: 1.2rem;
+            color: #00e6f6;
+            text-align: center;
+            background: linear-gradient(to right, #00e6f6, #ad4bff);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 0.7; }
+            50% { opacity: 1; }
+        }
+
+        /* 横屏强制提示层 */
+        .landscape-mandatory {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #050505;
+            z-index: 9999;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            gap: 20px;
+            text-align: center;
+            padding: 20px;
+        }
+        .landscape-mandatory i {
+            font-size: 4rem;
+            color: #00e6f6;
+            animation: rotate-icon 3s infinite ease-in-out;
+        }
+        .landscape-mandatory p {
+            font-size: 1.5rem;
+            color: #fff;
+        }
+
+        @media screen and (orientation: portrait) {
+            .landscape-mandatory {
+                display: flex;
+            }
+            header, main {
+                display: none !important;
+            }
+        }
+
+        /* 滑动容器核心样式 */
+        .scroll-container {
+            width: 100%;
+            overflow-x: auto;
+            overflow-y: hidden;
+            padding: 10px 0 5px 0; /* 减少底部内边距，让提示上移 */
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
+        }
+        .scroll-container::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* 横向卡片布局 */
+        .scene-grid {
+            display: flex;
+            gap: 20px;
+            padding: 0 10px;
+        }
+
+        .scene-card {
+            width: 220px;
+            flex-shrink: 0;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            border-radius: 16px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+            cursor: pointer;
+        }
+
+        .scene-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+            transition: all 0.6s ease;
+        }
+
+        .scene-card:hover::before {
+            left: 100%;
+        }
+
+        .scene-card:hover img {
+            transform: scale(1.08);
+        }
+
+        .card-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
+            opacity: 0.7;
+            transition: opacity 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            padding: 20px;
+        }
+
+        /* 波纹效果 */
+        .ripple {
+            position: absolute;
+            border-radius: 50%;
+            transform: scale(0);
+            animation: ripple 0.6s linear;
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        @keyframes ripple {
+            to {
+                transform: scale(2.5);
+                opacity: 0;
+            }
+        }
+        
+        .server-indicator {
+            position: fixed;
+            bottom: 80px;
+            right: 20px;
+            background: rgba(0, 230, 246, 0.1);
+            border: 1px solid rgba(0, 230, 246, 0.3);
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            color: #00e6f6;
+            z-index: 50;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+        
+        @keyframes title-glow {
+            0%, 100% {
+                text-shadow: 0 0 10px rgba(0, 230, 246, 0.5);
+            }
+            50% {
+                text-shadow: 0 0 20px rgba(0, 230, 246, 0.8), 
+                             0 0 30px rgba(173, 75, 255, 0.6);
+            }
+        }
+        
+        .glowing-title {
+            animation: title-glow 3s infinite ease-in-out;
+        }
+
+        @keyframes rotate-icon {
+            0%, 100% { transform: rotate(0deg); }
+            50% { transform: rotate(90deg); }
+        }
+
+        /* 滑动提示样式 - 上移+灰色+新文字 */
+        .scroll-tip {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            margin-top: 5px; /* 大幅减少上边距，提升位置 */
+            color: #999; /* 灰色 */
+            font-size: 0.9rem;
+            animation: tip-pulse 2s infinite ease-in-out;
+        }
+
+        @keyframes tip-pulse {
+            0%, 100% { opacity: 0.6; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.1); }
+        }
+    </style>
+</head>
+
+<body class="bg-dark">
+    <!-- 加载动画层 -->
+    <div class="loader-overlay" id="loaderOverlay">
+        <div class="loader"></div>
+        <div class="loader-text">正在加载3D国漫女友...</div>
+    </div>
+
+    <div class="landscape-mandatory">
+        <i class="fa fa-mobile-screen-button"></i>
+        <p>请将设备横屏后体验</p>
+    </div>
+
+    <header class="fixed top-0 left-0 w-full z-50 pt-2 pb-1 px-4">
+        <div class="bg-glass rounded-xl border border-white/10 p-2">
+            <h1 class="text-[clamp(1.2rem,4vw,2rem)] font-bold text-center text-gradient bg-gradient-to-r from-primary via-secondary to-accent glowing-title">
+                3D国漫女友
+            </h1>
+        </div>
+    </header>
+
+    <main class="pt-16 pb-12 px-6">
+        <div class="fixed bottom-4 right-4 z-50">
+            <a href="https://flowus.cn/share/8f6b93bb-7e42-4eb2-8d10-c0b5d7bbc4e1?code=Z7K2F2" target="_blank" class="bg-gradient-to-r from-primary to-secondary text-white font-bold py-2 px-4 rounded-full shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 transition-all duration-300 flex items-center gap-2">
+                <i class="fa fa-headphones"></i>
+                <span>人工客服</span>
+            </a>
+        </div>
+        
+        <section class="mt-6">
+            <h2 class="text-lg font-bold mb-4 text-center text-gradient bg-gradient-to-r from-primary to-accent">选择你的女友</h2>
+            
+            <!-- 横向滑动容器 -->
+            <div class="scroll-container" id="cardScroll">
+                <div class="scene-grid">
+                    <!-- 八重神子 -->
+                    <a href="game.html?character=yae" class="scene-card group rounded-xl overflow-hidden shadow-lg relative card-hover">
+                        <div class="aspect-square w-full">
+                            <img src="AA/xianzi/fengmian.jpg" alt="八重神子" class="w-full h-full object-cover transition-transform duration-500 ease-in-out">
+                            <div class="card-overlay">
+                                <h3 class="text-white font-bold text-base text-center">八重神子</h3>
+                                <p class="text-center text-xs opacity-80 mt-1">即刻进入</p>
+                            </div>
+                        </div>
+                    </a>
+
+                    <!-- 纲手 -->
+                    <a href="game.html?character=tsunade" class="scene-card group rounded-xl overflow-hidden shadow-lg relative card-hover">
+                        <div class="aspect-square w-full">
+                            <img src="AA/gangshou/fengmian.jpg" alt="纲手" class="w-full h-full object-cover transition-transform duration-500 ease-in-out">
+                            <div class="card-overlay">
+                                <h3 class="text-white font-bold text-base text-center">纲手</h3>
+                                <p class="text-center text-xs opacity-80 mt-1">即刻进入</p>
+                            </div>
+                        </div>
+                    </a>
+
+                    <!-- 陆雪琪 -->
+                    <a href="game.html?character=lu_xue_qi" class="scene-card group rounded-xl overflow-hidden shadow-lg relative card-hover">
+                        <div class="aspect-square w-full">
+                            <img src="AA/luxueqi/fengmian.jpg" alt="陆雪琪" class="w-full h-full object-cover transition-transform duration-500 ease-in-out">
+                            <div class="card-overlay">
+                                <h3 class="text-white font-bold text-base text-center">陆雪琪</h3>
+                                <p class="text-center text-xs opacity-80 mt-1">即刻进入</p>
+                            </div>
+                        </div>
+                    </a>
+
+                    <!-- 申鹤 -->
+                    <a href="game.html?character=shen_he" class="scene-card group rounded-xl overflow-hidden shadow-lg relative card-hover">
+                        <div class="aspect-square w-full">
+                            <img src="AA/shenhe/fengmian.jpg" alt="申鹤" class="w-full h-full object-cover transition-transform duration-500 ease-in-out">
+                            <div class="card-overlay">
+                                <h3 class="text-white font-bold text-base text-center">申鹤</h3>
+                                <p class="text-center text-xs opacity-80 mt-1">即刻进入</p>
+                            </div>
+                        </div>
+                    </a>
+
+                    <!-- 圣采儿 -->
+                    <a href="game.html?character=sheng_cai_er" class="scene-card group rounded-xl overflow-hidden shadow-lg relative card-hover">
+                        <div class="aspect-square w-full">
+                            <img src="AA/shengcaier/fengmian.jpg" alt="圣采儿" class="w-full h-full object-cover transition-transform duration-500 ease-in-out">
+                            <div class="card-overlay">
+                                <h3 class="text-white font-bold text-base text-center">圣采儿</h3>
+                                <p class="text-center text-xs opacity-80 mt-1">即刻进入</p>
+                            </div>
+                        </div>
+                    </a>
+
+                    <!-- 小医仙 -->
+                    <a href="game.html?character=xiao_yi_xian" class="scene-card group rounded-xl overflow-hidden shadow-lg relative card-hover">
+                        <div class="aspect-square w-full">
+                            <img src="AA/xiaoyixian/fengmian.jpg" alt="小医仙" class="w-full h-full object-cover transition-transform duration-500 ease-in-out">
+                            <div class="card-overlay">
+                                <h3 class="text-white font-bold text-base text-center">小医仙</h3>
+                                <p class="text-center text-xs opacity-80 mt-1">即刻进入</p>
+                            </div>
+                        </div>
+                    </a>
+
+                    <!-- 雅菲 -->
+                    <a href="game.html?character=ya_fei" class="scene-card group rounded-xl overflow-hidden shadow-lg relative card-hover">
+                        <div class="aspect-square w-full">
+                            <img src="AA/yafei/fengmian.jpg" alt="雅菲" class="w-full h-full object-cover transition-transform duration-500 ease-in-out">
+                            <div class="card-overlay">
+                                <h3 class="text-white font-bold text-base text-center">雅菲</h3>
+                                <p class="text-center text-xs opacity-80 mt-1">即刻进入</p>
+                            </div>
+                        </div>
+                    </a>
+
+                    <!-- 云韵 -->
+                    <a href="game.html?character=yun_yun" class="scene-card group rounded-xl overflow-hidden shadow-lg relative card-hover">
+                        <div class="aspect-square w-full">
+                            <img src="AA/yunyun/fengmian.jpg" alt="云韵" class="w-full h-full object-cover transition-transform duration-500 ease-in-out">
+                            <div class="card-overlay">
+                                <h3 class="text-white font-bold text-base text-center">云韵</h3>
+                                <p class="text-center text-xs opacity-80 mt-1">即刻进入</p>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
+            <!-- 滑动提示 - 文字修改+灰色+上移 -->
+            <div class="scroll-tip">
+                <i class="fa fa-angle-left"></i>
+                <span>左右滑动解锁更多国漫女神</span>
+                <i class="fa fa-angle-right"></i>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // 等待页面完全加载后隐藏加载动画
+        window.addEventListener('load', function() {
+            setTimeout(function() {
+                const loaderOverlay = document.getElementById('loaderOverlay');
+                loaderOverlay.classList.add('hidden');
+                // 确保加载层完全隐藏后移除，避免遮挡交互
+                setTimeout(() => loaderOverlay.style.display = 'none', 800);
+            }, 500); // 增加一点延迟，让加载动画显示更自然
+        });
+
+        // 波纹效果
+        document.querySelectorAll('.scene-card').forEach(card => {
+            card.addEventListener('click', function(e) {
+                const rect = this.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                const ripple = document.createElement('span');
+                ripple.classList.add('ripple');
+                ripple.style.left = `${x}px`;
+                ripple.style.top = `${y}px`;
+                
+                this.appendChild(ripple);
+                
+                setTimeout(() => {
+                    ripple.remove();
+                }, 600);
+            });
+        });
+
+        // 初始化
+        window.addEventListener('DOMContentLoaded', () => {
+            const serverIndicator = document.querySelector('.server-indicator');
+            if (serverIndicator) {
+                serverIndicator.style.opacity = '1';
+            }
+        });
+
+        // 禁止缩放 + 监听旋转
+        document.addEventListener('gesturestart', e => e.preventDefault());
+        document.addEventListener('contextmenu', e => e.preventDefault());
+        window.addEventListener('orientationchange', () => {
+            setTimeout(() => window.scrollTo(0, 0), 100);
+        });
+
+        // 鼠标拖拽滑动
+        const scrollContainer = document.getElementById('cardScroll');
+        let isDown = false;
+        let startX;
+        let scrollLeft;
+
+        scrollContainer.addEventListener('mousedown', (e) => {
+            isDown = true;
+            scrollContainer.classList.add('cursor-grabbing');
+            startX = e.pageX - scrollContainer.offsetLeft;
+            scrollLeft = scrollContainer.scrollLeft;
+        });
+
+        scrollContainer.addEventListener('mouseleave', () => {
+            isDown = false;
+            scrollContainer.classList.remove('cursor-grabbing');
+        });
+
+        scrollContainer.addEventListener('mouseup', () => {
+            isDown = false;
+            scrollContainer.classList.remove('cursor-grabbing');
+        });
+
+        scrollContainer.addEventListener('mousemove', (e) => {
+            if (!isDown) return;
+            e.preventDefault();
+            const x = e.pageX - scrollContainer.offsetLeft;
+            const walk = (x - startX) * 2;
+            scrollContainer.scrollLeft = scrollLeft - walk;
+        });
+    </script>
+</body>
+</html>
